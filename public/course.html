@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details - E-Learning Platform</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/index.html">
+                <i class="bi bi-mortarboard-fill"></i> LearnHub
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/index.html">Courses</a>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link" id="userName">Loading...</span>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4 mb-5">
+        <!-- Back Button -->
+        <a href="/index.html" class="btn btn-outline-primary mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Courses
+        </a>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading course details...</p>
+        </div>
+
+        <!-- Course Content -->
+        <div id="courseContent" class="d-none">
+            <!-- Course Header -->
+            <div class="course-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 id="courseTitle"></h1>
+                        <p class="lead text-muted" id="courseDescription"></p>
+
+                        <div class="course-info">
+                            <div class="course-info-item">
+                                <i class="bi bi-person-fill"></i>
+                                <span id="courseInstructor"></span>
+                            </div>
+                            <div class="course-info-item">
+                                <i class="bi bi-clock-fill"></i>
+                                <span id="courseDuration"></span>
+                            </div>
+                            <div class="course-info-item">
+                                <i class="bi bi-bar-chart-fill"></i>
+                                <span id="courseLevel"></span>
+                            </div>
+                            <div class="course-info-item">
+                                <i class="bi bi-list-ul"></i>
+                                <span id="lessonCount"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <div id="courseThumbnail" class="course-thumbnail rounded" style="max-height: 200px; max-width: 100%;">
+                            <span id="courseThumbnailText" class="course-thumbnail-text"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lessons Section -->
+            <div class="lessons-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>Course Lessons</h3>
+                    <button id="toggleCompletionBtn" class="btn" onclick="toggleCompletion()">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span id="completionBtnText">Mark as Completed</span>
+                    </button>
+                </div>
+
+                <div id="alertContainer"></div>
+
+                <div id="lessonsContainer">
+                    <!-- Lessons will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Auth & Courses JS -->
+    <script src="/js/auth.js"></script>
+    <script src="/js/courses.js"></script>
+
+    <script>
+        let currentCourse = null;
+
+        // Protect page and load course
+        protectPage().then(() => {
+            // Load user info
+            const user = getUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.name;
+            }
+
+            // Get course ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('id');
+
+            if (courseId) {
+                loadCourse(parseInt(courseId));
+            } else {
+                window.location.href = '/index.html';
+            }
+        });
+
+        async function loadCourse(courseId) {
+            const result = await fetchCourse(courseId);
+
+            if (result.success) {
+                currentCourse = result.course;
+                displayCourse(currentCourse);
+            } else {
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        Failed to load course: ${result.error}
+                    </div>
+                    <a href="/index.html" class="btn btn-primary">Back to Courses</a>
+                `;
+            }
+        }
+
+        function displayCourse(course) {
+            // Hide loading, show content
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('courseContent').classList.remove('d-none');
+
+            // Set course details
+            document.getElementById('courseTitle').textContent = course.title;
+            document.getElementById('courseDescription').textContent = course.description;
+            document.getElementById('courseInstructor').textContent = course.instructor;
+            document.getElementById('courseDuration').textContent = course.duration;
+            document.getElementById('courseLevel').textContent = course.level;
+            document.getElementById('lessonCount').textContent = `${course.lessons.length} lessons`;
+
+            // Set thumbnail color based on course ID
+            const colors = {
+                1: '#4CAF50',
+                2: '#2196F3',
+                3: '#FF9800',
+                4: '#9C27B0'
+            };
+            const color = colors[course.id] || '#4CAF50';
+            document.getElementById('courseThumbnail').style.backgroundColor = color;
+            document.getElementById('courseThumbnailText').textContent = course.title;
+
+            // Update completion button
+            updateCompletionButton();
+
+            // Display lessons
+            const lessonsContainer = document.getElementById('lessonsContainer');
+            lessonsContainer.innerHTML = '';
+
+            course.lessons.forEach((lesson, index) => {
+                const lessonItem = `
+                    <div class="lesson-item">
+                        <div class="lesson-info">
+                            <h5>Lesson ${index + 1}: ${lesson.title}</h5>
+                            <span class="lesson-duration">
+                                <i class="bi bi-clock"></i> ${lesson.duration}
+                            </span>
+                        </div>
+                        <div>
+                            <i class="bi bi-play-circle-fill text-primary" style="font-size: 2rem; cursor: pointer;"></i>
+                        </div>
+                    </div>
+                `;
+                lessonsContainer.innerHTML += lessonItem;
+            });
+        }
+
+        function updateCompletionButton() {
+            if (!currentCourse) return;
+
+            const isCompleted = isCourseCompleted(currentCourse.id);
+            const btn = document.getElementById('toggleCompletionBtn');
+            const btnText = document.getElementById('completionBtnText');
+
+            if (isCompleted) {
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-danger');
+                btnText.textContent = 'Mark as Incomplete';
+            } else {
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-success');
+                btnText.textContent = 'Mark as Completed';
+            }
+        }
+
+        function toggleCompletion() {
+            if (!currentCourse) return;
+
+            const alertContainer = document.getElementById('alertContainer');
+            const isCompleted = isCourseCompleted(currentCourse.id);
+
+            if (isCompleted) {
+                // Unmark as completed
+                unmarkCourseCompleted(currentCourse.id);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-info" role="alert">
+                        Course marked as incomplete. Keep learning!
+                    </div>
+                `;
+            } else {
+                // Mark as completed
+                markCourseCompleted(currentCourse.id);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle-fill"></i> Congratulations! Course marked as completed!
+                    </div>
+                `;
+            }
+
+            // Update button
+            updateCompletionButton();
+
+            // Clear alert after 3 seconds
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
